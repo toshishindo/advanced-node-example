@@ -1,35 +1,31 @@
-const cluster = require('cluster');
+const express = require("express");
+const crypto = require("crypto");
+const app = express();
+const Worker = require('webworker-threads').Worker;
 
-// Is the file being executed in master mode?
-if (cluster.isMaster) {
-  // Cause index.js to be executed *again* but
-  // in child mode
-  cluster.fork();
-  // cluster.fork();
-  // cluster.fork();
-  // cluster.fork();
-} else {
-  // Im a child, im going to act like a server
-  // and do nothing else
-  const express = require('express');
-  const app = express();
+app.get("/", (req, res) => {
+ 
+  const worker = new Worker(function() {
+    this.onmessage = function () {
+      let counter = 0;
+      while (counter < 1e9) {
+        counter++;
+      }
 
-  function doWork(duration) {
-    const start = Date.now();
-    while (Date.now() - start < duration) { }
-  }
-
-  app.get('/', (req, res) => {
-    // The function below is going to be processed in event loop.
-    // This is blocking event looGp.
-    doWork(5000);
-  
-    res.send('Hi there');
+      postMessage(counter);
+    };
   });
 
-  app.get('/fast', (req, res) => {
-    res.send('This was fast!');
-  });
+  worker.onmessage = function(message) {
+    console.log(message.data);
+    res.send('' + message.data);
+  };
 
-  app.listen(3000);
-}
+  worker.postMessage();
+});
+
+app.get("/fast", (req, res) => {
+  res.send("This was fast!");
+});
+
+app.listen(3000);
